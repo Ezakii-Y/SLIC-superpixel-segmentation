@@ -3,6 +3,7 @@ import os
 from glob import glob
 import cv2
 import numpy as np
+from pathlib import Path
 from src import evaluation, utils
 
 
@@ -16,10 +17,12 @@ def main():
     metrics = []
 
     for pred in pred_files:
-        name = os.path.basename(pred)
-        gt_path = os.path.join(args.gt_dir, name)
-        if not os.path.exists(gt_path):
+        base = Path(pred).stem
+        # 支持不同扩展按照 stem 进行匹配
+        gt_candidates = glob(os.path.join(args.gt_dir, base + '.*'))
+        if not gt_candidates:
             continue
+        gt_path = gt_candidates[0]
 
         img_pred = utils.read_image(pred)
         img_gt = utils.read_image(gt_path)

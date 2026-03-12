@@ -34,27 +34,49 @@ def boundary_recall(labels, ground_truth, tolerance=2):
 
 
 def undersegmentation_error(labels, ground_truth):
-    # 近似 UE
+    # 经典 UE：每个超像素与最大的GT区域匹配后多余像素之和 / 总像素
+    # 参考：Achanta et al., 2012
+    if labels.shape != ground_truth.shape:
+        raise ValueError('labels and ground_truth must have same shape')
+
     h, w = labels.shape
-    lab_flat = labels.reshape(-1)
-    gt_flat = ground_truth.reshape(-1)
+    N = h * w
+    labels_flat = labels.ravel()
+    gt_flat = ground_truth.ravel()
 
-    error = 0.0
-    for sp_id in np.unique(lab_flat):
-        mask = lab_flat == sp_id
-        gt_ids, counts = np.unique(gt_flat[mask], return_counts=True)
-        if len(counts) == 0:
-            continue
-        max_count = counts.max()
-        error += mask.sum() - max_count
+    sp_labels, sp_inv = np.unique(labels_flat, return_inverse=True)
+    gt_labels, gt_inv = np.unique(gt_flat, return_inverse=True)
 
-    return error / (h * w)
+    # 计算每个superpixel与GT组合的交叉计数
+    M = len(gt_labels)
+    pair_index = sp_inv * M + gt_inv
+    pairs, counts = np.unique(pair_index, return_counts=True)
+
+    # 将统计还原为 confusion matrix 形式
+    sp_idx = pairs // M
+    gt_idx = pairs % M
+
+    # 以 (num_superpixels, num_gt) 矩阵形式进行聚合
+    conf = np.zeros((len(sp_labels), len(gt_labels)), dtype=np.int32)
+    conf[sp_idx, gt_idx] = counts
+
+    # 对每个超像素，取覆盖最大GT的像素数
+    max_match = np.max(conf, axis=1)
+    sp_sizes = np.sum(conf, axis=1)
+
+    error = np.sum(sp_sizes - max_match)
+    return float(error) / float(N)
+
+
+def achievable_segmentation_accuracy(labels, ground_truth):
+    ue = undersegmentation_error(labels, ground_truth)
+    return 1.0 - ue
 
 
 def evaluate(labels, ground_truth):
     br = boundary_recall(labels, ground_truth)
     ue = undersegmentation_error(labels, ground_truth)
-    asa = 1.0 - ue
+    asa = achievable_segmentation_accuracy(labels, ground_truth)
     return {
         'boundary_recall': br,
         'undersegmentation_error': ue,
