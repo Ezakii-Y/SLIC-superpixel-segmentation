@@ -2,7 +2,7 @@ import numpy as np
 
 
 def boundary_recall(labels, ground_truth, tolerance=2):
-    # 简单边界召回：将标签边界点匹配到gt边界点
+    # 计算边界召回率：GT边界点中可匹配上的比例（TP / (TP + FN)）
     def boundary(mask):
         h, w = mask.shape
         out = np.zeros_like(mask)
@@ -12,20 +12,25 @@ def boundary_recall(labels, ground_truth, tolerance=2):
                     out[y, x] = 1
         return out
 
-    b1 = boundary(labels)
-    b2 = boundary(ground_truth)
+    b_pred = boundary(labels)
+    b_gt = boundary(ground_truth)
 
-    gt_points = np.argwhere(b2)
+    pred_points = np.argwhere(b_pred)
+    gt_points = np.argwhere(b_gt)
+
     if len(gt_points) == 0:
         return 1.0
+    if len(pred_points) == 0:
+        return 0.0
 
-    hit = 0
-    for y, x in np.argwhere(b1):
-        d = np.sqrt((gt_points[:, 0] - y) ** 2 + (gt_points[:, 1] - x) ** 2)
-        if np.min(d) <= tolerance:
-            hit += 1
+    hits = 0
+    tol2 = tolerance * tolerance
+    for y, x in gt_points:
+        d_sq = (pred_points[:, 0] - y) ** 2 + (pred_points[:, 1] - x) ** 2
+        if np.min(d_sq) <= tol2:
+            hits += 1
 
-    return float(hit) / max(1, np.sum(b1))
+    return float(hits) / len(gt_points)
 
 
 def undersegmentation_error(labels, ground_truth):
