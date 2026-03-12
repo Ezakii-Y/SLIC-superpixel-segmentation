@@ -1,7 +1,15 @@
 import argparse
 import os
+import sys
+from pathlib import Path
 from glob import glob
-from src import slic, utils, visualization
+
+# 确保可以在 scripts 目录中直接执行时导入 src 包
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root))
+
+from src.slic import slic
+from src import utils, visualization
 
 
 def main():

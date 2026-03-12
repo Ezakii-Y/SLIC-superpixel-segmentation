@@ -1,7 +1,15 @@
 import argparse
 import os
+import sys
+from pathlib import Path
+
+# 确保可以在 scripts 目录中直接执行时导入 src 包
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root))
+
 import numpy as np
-from src import slic, utils, visualization
+from src.slic import slic
+from src import utils, visualization
 
 
 def main():
@@ -18,7 +26,7 @@ def main():
     if image is None:
         raise FileNotFoundError('Input image not found: %s' % args.input)
 
-    labels = slic.slic(image, num_segments=args.num_segments, compactness=args.compactness, max_iter=args.max_iter)
+    labels = slic(image, num_segments=args.num_segments, compactness=args.compactness, max_iter=args.max_iter)
     vis = visualization.draw_boundaries(image, labels)
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
